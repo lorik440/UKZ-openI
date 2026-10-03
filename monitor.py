@@ -40,6 +40,7 @@ import time
 from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from logging.handlers import RotatingFileHandler
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
 from bs4 import BeautifulSoup
@@ -61,6 +62,42 @@ try:
     CHECK_INTERVAL = max(60, min(CHECK_INTERVAL, 3600))
 except ValueError:
     CHECK_INTERVAL = 120
+
+# ── Active window ─────────────────────────────────────────────────────────────
+# The monitor only polls during ACTIVE_START–ACTIVE_END in ACTIVE_TZ.
+# Outside that window the process sleeps until the next start time.
+# Format: HH:MM  (24-hour).  Timezone: any IANA name, e.g. "Europe/Belgrade".
+_RAW_TZ    = os.getenv("ACTIVE_TZ",    "Europe/Belgrade").strip()
+_RAW_START = os.getenv("ACTIVE_START", "08:00").strip()
+_RAW_END   = os.getenv("ACTIVE_END",   "22:00").strip()
+
+def _parse_hhmm(value: str, label: str, default: str) -> tuple[int, int]:
+    """Parse 'HH:MM' into (hour, minute). Falls back to default on bad input."""
+    try:
+        h, m = value.split(":")
+        hour, minute = int(h), int(m)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError
+        return hour, minute
+    except (ValueError, AttributeError):
+        logging.getLogger(__name__).warning(
+            "%s '%s' is not a valid HH:MM time — using default '%s'.",
+            label, value, default,
+        )
+        dh, dm = default.split(":")
+        return int(dh), int(dm)
+
+try:
+    ACTIVE_TZ = ZoneInfo(_RAW_TZ)
+except ZoneInfoNotFoundError:
+    logging.getLogger(__name__).warning(
+        "ACTIVE_TZ '%s' is not a recognised timezone — using 'Europe/Belgrade'.",
+        _RAW_TZ,
+    )
+    ACTIVE_TZ = ZoneInfo("Europe/Belgrade")
+
+_START_H, _START_M = _parse_hhmm(_RAW_START, "ACTIVE_START", "08:00")
+_END_H,   _END_M   = _parse_hhmm(_RAW_END,   "ACTIVE_END",   "22:00")
 
 BASE_URL       = "https://smu.uni-gjilan.net"
 LOGIN_URL      = f"{BASE_URL}/Account/Login"
@@ -233,6 +270,40 @@ def _backoff_delay(attempt: int) -> float:
     """Return capped exponential backoff: 10, 20, 40, 80, 160, 300, 300, …"""
     delay = BACKOFF_BASE * (BACKOFF_FACTOR ** attempt)
     return min(delay, BACKOFF_MAX)
+
+
+def _active_window() -> tuple[bool, float]:
+    """
+    Return (is_active, seconds_until_next_start).
+
+    is_active             — True if the current local time is within
+                            [ACTIVE_START, ACTIVE_END).
+    seconds_until_next_start — seconds to sleep until the window opens again.
+                            Only meaningful when is_active is False.
+
+    The comparison is purely time-of-day; it does not handle windows that
+    span midnight (e.g. 22:00–06:00). For a daytime-only monitor that is
+    intentional: set ACTIVE_START < ACTIVE_END.
+    """
+    now        = datetime.now(ACTIVE_TZ)
+    start_mins = _START_H * 60 + _START_M
+    end_mins   = _END_H   * 60 + _END_M
+    now_mins   = now.hour * 60 + now.minute
+
+    if start_mins <= now_mins < end_mins:
+        return True, 0.0
+
+    # Calculate seconds until the next ACTIVE_START
+    if now_mins < start_mins:
+        # Earlier in the same day — start is still ahead today
+        delta_mins = start_mins - now_mins
+    else:
+        # Past end time — start is tomorrow
+        delta_mins = (24 * 60 - now_mins) + start_mins
+
+    # Subtract elapsed seconds within the current minute for precision
+    seconds_until = delta_mins * 60 - now.second
+    return False, max(seconds_until, 1.0)
 
 
 # ── State persistence ─────────────────────────────────────────────────────────
@@ -700,6 +771,10 @@ def run() -> None:
         ),
     )
     log.info("Interval : %s", interval_display)
+    log.info(
+        "Active   : %02d:%02d – %02d:%02d (%s)",
+        _START_H, _START_M, _END_H, _END_M, _RAW_TZ,
+    )
     log.info("Log dir  : %s", LOG_DIR)
     log.info("=" * 60)
 
@@ -737,6 +812,31 @@ def run() -> None:
 
     # ── Loop ──────────────────────────────────────────────────────────────────
     while True:
+
+        # ── Active window check ───────────────────────────────────────────────
+        is_active, sleep_secs = _active_window()
+        if not is_active:
+            # Drop the session so we re-authenticate cleanly when we wake up.
+            # A session left idle for hours would almost certainly be expired.
+            if logged_in:
+                log.info(
+                    "Outside active window (%02d:%02d–%02d:%02d %s). "
+                    "Dropping session. Sleeping for %s …",
+                    _START_H, _START_M, _END_H, _END_M,
+                    _RAW_TZ, _fmt_duration(sleep_secs),
+                )
+                logged_in  = False
+                login_time = None
+                session    = _make_session()
+            else:
+                log.info(
+                    "Outside active window (%02d:%02d–%02d:%02d %s). "
+                    "Sleeping for %s …",
+                    _START_H, _START_M, _END_H, _END_M,
+                    _RAW_TZ, _fmt_duration(sleep_secs),
+                )
+            time.sleep(sleep_secs)
+            continue
 
         # ── Login ─────────────────────────────────────────────────────────────
         if not logged_in:
