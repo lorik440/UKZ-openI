@@ -1,0 +1,33 @@
+# ── Credentials & secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ── Runtime state & logs ──────────────────────────────────────────────────────
+state.json
+logs/
+*.log
+
+# ── Python virtual environment ────────────────────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ── Test / coverage artifacts ─────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── OS noise ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+smu.uni-gjilan.net.html
+
+.vscode/

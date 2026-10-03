@@ -1,0 +1,45 @@
+{
+  "_comment": "Edit the title and message fields freely. Do not remove or rename any keys.",
+
+  "monitor_started": {
+    "_when": "Sent to Gmail when the script starts up",
+    "title": "SMU Monitor started",
+    "message": "SMU Monitor started.\nChecking every {interval}.\nYou will be alerted when the notification count increases."
+  },
+
+  "monitor_stopped": {
+    "_when": "Sent to Gmail when you stop the script with Ctrl+C",
+    "title": "SMU Monitor stopped",
+    "message": "Monitor was stopped manually (Ctrl+C)."
+  },
+
+  "new_notification": {
+    "_when": "Sent to ntfy (your friends) when the notification count increases",
+    "title": "LAJMRIM NGA SMU",
+    "message": "Lajm i ri ne SMU.\numri i lajmrimeve: {old_count} -> {new_count}\n\Shko ne: {url}"
+  },
+
+  "login_failed": {
+    "_when": "Sent to Gmail when login fails due to wrong credentials — monitor stops",
+    "title": "SMU Monitor — login failed",
+    "message": "Login failed (wrong credentials). Monitor stopped.\nFix SMU_USERNAME / SMU_PASSWORD in .env and restart.\nNo retry was made to protect your account from lockout."
+  },
+
+  "relogin_failed": {
+    "_when": "Sent to Gmail when the session expired and the one re-login attempt also failed",
+    "title": "SMU Monitor stopped — re-login failed",
+    "message": "Session expired and the re-login attempt failed.\nMonitor stopped. Please restart manually."
+  },
+
+  "parser_error": {
+    "_when": "Sent to Gmail when the website returns unexpected data — monitor stops safely",
+    "title": "SMU Monitor — parser error",
+    "message": "The university website returned unexpected data.\nThe notification count could not be read safely.\nMonitor stopped to avoid false alerts.\nPlease check the site manually and restart the monitor."
+  },
+
+  "server_unavailable": {
+    "_when": "Sent to Gmail when the SMU portal has been down for several consecutive checks",
+    "title": "SMU portal temporarily unavailable",
+    "message": "The SMU portal has been unavailable for {failures} consecutive checks.\nThe monitor will keep retrying automatically."
+  }
+}
