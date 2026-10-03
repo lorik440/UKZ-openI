@@ -437,11 +437,11 @@ def notify_alert(
     Goes to ntfy ONLY — this is what your friends subscribe to.
     Returns True if delivered.
 
-    click is set to NJOFTIMET_URL (the notifications list page) because the
-    portal does not expose deep links to individual announcements — the list
-    page is the closest useful destination for the recipient.
+    click is set to LOGIN_URL so tapping the notification on a phone that
+    isn't logged in lands directly on the login page. The portal does not
+    expose deep links to individual announcements.
     """
-    return send_ntfy(title, message, priority=5, tags="bell,school", click=NJOFTIMET_URL)
+    return send_ntfy(title, message, priority=5, tags="bell,school", click=LOGIN_URL)
 
 
 def notify_status(
