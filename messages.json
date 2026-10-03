@@ -16,7 +16,7 @@
   "new_notification": {
     "_when": "Sent to ntfy (your friends) when the notification count increases",
     "title": "LAJMRIM NGA SMU",
-    "message": "Lajm i ri ne SMU.\numri i lajmrimeve: {old_count} -> {new_count}\n\Shko ne: {url}"
+    "message": "Lajm i ri ne SMU.\numri i lajmrimeve: {old_count} -> {new_count}\n\nGo to: {url}"
   },
 
   "login_failed": {
