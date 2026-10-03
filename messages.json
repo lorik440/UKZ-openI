@@ -16,7 +16,7 @@
   "new_notification_page": {
     "_when": "Sent to ntfy (your friends) when the Njoftimet page no longer shows the empty message — meaning a new notification appeared",
     "title": "LAJMRIM NGA SMU",
-    "message": "Ka nje lajmerim te ri ne SMU!\n\nShko tek: {url}"
+    "message": "Ka nje lajmerim te ri ne SMU!\n\nShko tek: https://smu.uni-gjilan.net/Account/Login"
   },
 
   "login_failed": {
