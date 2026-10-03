@@ -300,7 +300,7 @@ def send_ntfy(
         return False
     url = f"{NTFY_SERVER}/{NTFY_TOPIC}"
     headers = {
-        "Title":    title,
+        "Title":    title.encode("utf-8"),
         "Priority": str(priority),
     }
     if tags:

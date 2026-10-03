@@ -460,7 +460,7 @@ class TestSendNtfy:
             m.send_ntfy("My Title", "My message", priority=4, tags="bell", click="https://x.com")
             _, kwargs = mock_post.call_args
             headers = kwargs["headers"]
-            assert headers["Title"]    == "My Title"
+            assert headers["Title"]    == b"My Title"
             assert headers["Priority"] == "4"
             assert headers["Tags"]     == "bell"
             assert headers["Click"]    == "https://x.com"
