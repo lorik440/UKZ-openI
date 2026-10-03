@@ -370,7 +370,7 @@ def notify_alert(
     portal does not expose deep links to individual announcements — the list
     page is the closest useful destination for the recipient.
     """
-    return send_ntfy(title, message, priority=4, tags="bell,school", click=NJOFTIMET_URL)
+    return send_ntfy(title, message, priority=5, tags="bell,school", click=NJOFTIMET_URL)
 
 
 def notify_status(
