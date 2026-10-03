@@ -11,11 +11,15 @@ How the university website works
            Cookies set: .AspNet.ApplicationCookie + ASP.NET_SessionId
 - Auth   : Authenticated pages contain id="logoutForm" / action="/Account/LogOff".
            The login page does NOT contain these strings.
-- Count  : GET /Home/CountNews  → {"status": "ok", "count": N}
-           This is a lightweight AJAX endpoint; no full page download needed.
+- Count  : Two-stage approach:
+           Stage 1 (every poll): GET /Home/CountNews  → {"status":"ok","count":N}
+             Only 25 bytes. If count == 0, nothing to do.
+           Stage 2 (only when count > 0): GET /Home/Njoftimet (37 KB HTML page)
+             Confirms that the MesageInfoID element no longer shows the
+             "Nuk ka ndonjë njoftim të ri!" text, verifying a real announcement.
+           This avoids downloading 37 KB every 2 minutes when nothing is happening.
 - Timeout: The portal's JS clock calls getPlus2Hours() — sessions expire after
-           2 hours of inactivity. Each successful /Home/CountNews poll resets
-           the inactivity clock server-side (because the cookie is refreshed).
+           2 hours of inactivity. Each poll resets the inactivity timer server-side.
 
 Failure taxonomy
 -----------------
@@ -29,7 +33,6 @@ PARSER_ERROR           — count field missing / invalid in API response — STO
 
 import json
 import logging
-import math
 import os
 import smtplib
 import sys
@@ -39,6 +42,7 @@ from email.mime.text import MIMEText
 from logging.handlers import RotatingFileHandler
 
 import requests
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -58,9 +62,17 @@ try:
 except ValueError:
     CHECK_INTERVAL = 120
 
-BASE_URL  = "https://smu.uni-gjilan.net"
-LOGIN_URL = f"{BASE_URL}/Account/Login"
-COUNT_URL = f"{BASE_URL}/Home/CountNews"
+BASE_URL       = "https://smu.uni-gjilan.net"
+LOGIN_URL      = f"{BASE_URL}/Account/Login"
+COUNT_URL      = f"{BASE_URL}/Home/CountNews"   # Stage 1 lightweight poll (every check) + post-login verification
+NJOFTIMET_URL  = f"{BASE_URL}/Home/Njoftimet"  # Stage 2 confirmation
+
+# ── Njoftimet page detection strings ─────────────────────────────────────────
+# Confirmed from live page inspection (October 2026).
+# The "no notification" message element has a stable id attribute.
+_EMPTY_ELEMENT_ID   = "MesageInfoID"           # id of the container div
+_EMPTY_TEXT_SIGNAL  = "Nuk ka ndonj"           # start of "Nuk ka ndonjë njoftim të ri!"
+                                                # (avoiding HTML entity variants)
 
 # ── Messages ──────────────────────────────────────────────────────────────────
 MESSAGES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "messages.json")
@@ -70,15 +82,21 @@ def load_messages() -> dict:
     Load notification messages from messages.json.
     If the file is missing or invalid, falls back to built-in defaults
     so the monitor keeps running even if messages.json is broken.
+
+    messages.json may contain annotation-only keys at any level:
+      "_comment" — top-level human note about the file
+      "_when"    — per-message note describing when that message is sent
+    These keys are silently ignored by this loader; only "title" and
+    "message" are read from each entry.
     """
     defaults = {
-        "monitor_started":   {"title": "SMU Monitor started",               "message": "SMU Monitor started.\nChecking every {interval}."},
-        "monitor_stopped":   {"title": "SMU Monitor stopped",               "message": "Monitor was stopped manually (Ctrl+C)."},
-        "new_notification":  {"title": "University Notification",           "message": "New notification detected.\nNotification count: {old_count} -> {new_count}\n\nGo to: {url}"},
-        "login_failed":      {"title": "SMU Monitor — login failed",        "message": "Login failed (wrong credentials). Monitor stopped.\nFix SMU_USERNAME / SMU_PASSWORD in .env and restart."},
-        "relogin_failed":    {"title": "SMU Monitor stopped — re-login failed", "message": "Session expired and the re-login attempt failed.\nMonitor stopped. Please restart manually."},
-        "parser_error":      {"title": "SMU Monitor — parser error",        "message": "The website returned unexpected data. Monitor stopped to avoid false alerts."},
-        "server_unavailable":{"title": "SMU portal temporarily unavailable","message": "The SMU portal has been unavailable for {failures} consecutive checks.\nThe monitor will keep retrying automatically."},
+        "monitor_started":      {"title": "SMU Monitor started",                   "message": "SMU Monitor started.\nChecking every {interval}."},
+        "monitor_stopped":      {"title": "SMU Monitor stopped",                   "message": "Monitor was stopped manually (Ctrl+C)."},
+        "new_notification_page":{"title": "LAJMRIM NGA SMU",                       "message": "Ka nje lajmerim te ri ne SMU!\n\nShko tek: {url}"},
+        "login_failed":         {"title": "SMU Monitor — login failed",            "message": "Login failed (wrong credentials). Monitor stopped.\nFix SMU_USERNAME / SMU_PASSWORD in .env and restart."},
+        "relogin_failed":       {"title": "SMU Monitor stopped — re-login failed", "message": "Session expired and the re-login attempt failed.\nMonitor stopped. Please restart manually."},
+        "parser_error":         {"title": "SMU Monitor — parser error",            "message": "The website returned unexpected data. Monitor stopped to avoid false alerts."},
+        "server_unavailable":   {"title": "SMU portal temporarily unavailable",    "message": "The SMU portal has been unavailable for {failures} consecutive checks.\nThe monitor will keep retrying automatically."},
     }
     if not os.path.exists(MESSAGES_FILE):
         logging.getLogger(__name__).warning(
@@ -188,7 +206,8 @@ LOGIN_NETWORK_ERROR    = "LOGIN_NETWORK_ERROR"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _fmt_duration(seconds: float) -> str:
-    """Format seconds as '2h 15m 30s'."""
+    """Format seconds as '2h 15m 30s'. Zero-value components are omitted
+    except when the total is zero, which returns '0s'."""
     s = int(seconds)
     h, rem = divmod(s, 3600)
     m, sec = divmod(rem, 60)
@@ -197,7 +216,8 @@ def _fmt_duration(seconds: float) -> str:
         parts.append(f"{h}h")
     if m:
         parts.append(f"{m}m")
-    parts.append(f"{sec}s")
+    if sec or not parts:   # always show seconds if nothing else, or if sec > 0
+        parts.append(f"{sec}s")
     return " ".join(parts)
 
 
@@ -340,23 +360,22 @@ def send_email(subject: str, body: str) -> bool:
 def notify_alert(
     title: str,
     message: str,
-    priority: int = 4,
-    tags: str = "",
-    click: str = "",
 ) -> bool:
     """
     Send a university notification alert.
     Goes to ntfy ONLY — this is what your friends subscribe to.
     Returns True if delivered.
+
+    click is set to NJOFTIMET_URL (the notifications list page) because the
+    portal does not expose deep links to individual announcements — the list
+    page is the closest useful destination for the recipient.
     """
-    return send_ntfy(title, message, priority=priority, tags=tags, click=click)
+    return send_ntfy(title, message, priority=4, tags="bell,school", click=NJOFTIMET_URL)
 
 
 def notify_status(
     title: str,
     message: str,
-    priority: int = 3,
-    tags: str = "",
 ) -> bool:
     """
     Send a monitor status/error message.
@@ -391,17 +410,6 @@ def _is_login_page(text: str) -> bool:
         or 'name="loginPassword"' in text
     )
 
-
-def _is_authenticated(text: str) -> bool:
-    """
-    Return True if the response body contains a positive authentication indicator.
-    Discovered from the actual site HTML: the logout form is only present
-    when logged in.
-    """
-    return (
-        'action="/Account/LogOff"' in text
-        or 'id="logoutForm"'        in text
-    )
 
 
 def login(session: requests.Session) -> str:
@@ -488,91 +496,147 @@ def login(session: requests.Session) -> str:
         return LOGIN_NETWORK_ERROR
 
 
-def poll_count(session: requests.Session) -> tuple[str, int | None]:
+def poll_notifications(session: requests.Session) -> tuple[str, bool | None]:
     """
-    Call /Home/CountNews and return (status, count).
+    Two-stage notification check.
 
-    status is one of:
-        COUNT_OK               — count is a valid integer
-        SESSION_EXPIRED        — portal redirected us to the login page
-        UNIVERSITY_UNAVAILABLE — HTTP 5xx from the portal
-        NETWORK_OFFLINE        — connection/timeout error
-        PARSER_ERROR           — response reached us but count is missing/invalid
+    Stage 1 — lightweight (every poll, 25 bytes):
+        GET /Home/CountNews → {"status":"ok","count":N}
+        If count == 0: no notification (False). Done.
+        If count > 0:  proceed to Stage 2.
 
-    IMPORTANT: PARSER_ERROR is treated as fatal (not a network blip).
-    A missing count field means the API changed or something is very wrong.
-    Returning 0 in that case could mask real notifications.
+    Stage 2 — confirmation (only when count > 0, 37 KB):
+        GET /Home/Njoftimet and parse id="MesageInfoID".
+        Confirms the announcement page also shows a real notification,
+        not just a badge count from something unrelated (inbox, etc.).
+
+        Rules for Stage 2:
+          - Element missing        → PARSER_ERROR (page structure changed — stop safely)
+          - Element empty          → PARSER_ERROR (unexpected — stop safely)
+          - Element has "Nuk ka ndonj" text → False (count was misleading, treat as no notification)
+          - Element has different text  → True (confirmed new announcement)
+
+    Returns (status, has_notification):
+        COUNT_OK + False  — no notification
+        COUNT_OK + True   — new notification confirmed
+        SESSION_EXPIRED   — redirected to login page
+        UNIVERSITY_UNAVAILABLE — HTTP 5xx
+        NETWORK_OFFLINE   — connection/timeout
+        PARSER_ERROR      — unexpected page structure (fatal)
     """
+    # ── Stage 1: lightweight CountNews check ─────────────────────────────────
     try:
         resp = session.get(COUNT_URL, timeout=HTTP_TIMEOUT, allow_redirects=True)
 
-        # ── Check for session expiry before raising for status ─────────────
         if _is_login_page(resp.text) or "/Account/Login" in resp.url:
             log.warning("Session expired — portal returned login page.")
             return SESSION_EXPIRED, None
 
         resp.raise_for_status()
 
-        # ── Parse JSON ────────────────────────────────────────────────────
         try:
             data = resp.json()
         except ValueError:
             log.error(
-                "PARSER_ERROR: /Home/CountNews returned non-JSON "
-                "(status=%d, url=%s). First 200 chars: %s",
-                resp.status_code, resp.url, resp.text[:200],
+                "PARSER_ERROR: /Home/CountNews returned non-JSON. "
+                "First 200 chars: %s", resp.text[:200],
             )
             return PARSER_ERROR, None
 
         if data.get("status") != "ok":
-            log.error(
-                "PARSER_ERROR: /Home/CountNews returned unexpected status field: %s",
-                data,
-            )
+            log.error("PARSER_ERROR: /Home/CountNews unexpected response: %s", data)
             return PARSER_ERROR, None
 
         raw_count = data.get("count")
-
-        # Explicitly reject missing or null count — do NOT default to 0
         if raw_count is None:
-            log.error(
-                "PARSER_ERROR: 'count' field is absent or null in response: %s",
-                data,
-            )
+            log.error("PARSER_ERROR: 'count' field absent in CountNews response: %s", data)
             return PARSER_ERROR, None
 
         try:
             count = int(raw_count)
         except (ValueError, TypeError):
-            log.error(
-                "PARSER_ERROR: 'count' field is not a valid integer: %r",
-                raw_count,
-            )
+            log.error("PARSER_ERROR: 'count' is not an integer: %r", raw_count)
             return PARSER_ERROR, None
 
-        return COUNT_OK, count
+        if count == 0:
+            # Nothing to do — skip the 37 KB page download entirely
+            return COUNT_OK, False
 
     except requests.HTTPError as exc:
         code = exc.response.status_code if exc.response is not None else 0
         if 500 <= code < 600:
-            log.warning("UNIVERSITY_UNAVAILABLE: HTTP %d from %s", code, COUNT_URL)
+            log.warning("UNIVERSITY_UNAVAILABLE: HTTP %d from CountNews", code)
             return UNIVERSITY_UNAVAILABLE, None
-        # Unexpected 4xx — could be session-related
-        log.warning(
-            "Unexpected HTTP %d from CountNews — treating as session expiry.", code
-        )
+        log.warning("Unexpected HTTP %d from CountNews — treating as session expiry.", code)
         return SESSION_EXPIRED, None
-
     except requests.Timeout:
-        log.warning("NETWORK_OFFLINE: request timed out.")
+        log.warning("NETWORK_OFFLINE: CountNews request timed out.")
         return NETWORK_OFFLINE, None
-
     except requests.ConnectionError as exc:
-        log.warning("NETWORK_OFFLINE: connection error — %s", exc)
+        log.warning("NETWORK_OFFLINE: CountNews connection error — %s", exc)
+        return NETWORK_OFFLINE, None
+    except requests.RequestException as exc:
+        log.warning("NETWORK_OFFLINE: CountNews request error — %s", exc)
         return NETWORK_OFFLINE, None
 
+    # ── Stage 2: confirm on Njoftimet page (only reached when count > 0) ─────
+    log.info("CountNews shows count=%d — confirming on Njoftimet page …", count)
+    try:
+        resp2 = session.get(NJOFTIMET_URL, timeout=HTTP_TIMEOUT, allow_redirects=True)
+
+        if _is_login_page(resp2.text) or "/Account/Login" in resp2.url:
+            log.warning("Session expired on Njoftimet page.")
+            return SESSION_EXPIRED, None
+
+        resp2.raise_for_status()
+
+        soup = BeautifulSoup(resp2.text, "html.parser")
+        element = soup.find(id=_EMPTY_ELEMENT_ID)
+
+        if element is None:
+            log.error(
+                "PARSER_ERROR: id='%s' not found on Njoftimet page. "
+                "The page structure may have changed.", _EMPTY_ELEMENT_ID,
+            )
+            return PARSER_ERROR, None
+
+        element_text = element.get_text(separator=" ", strip=True)
+
+        if not element_text:
+            log.error(
+                "PARSER_ERROR: id='%s' is empty — cannot determine notification state.",
+                _EMPTY_ELEMENT_ID,
+            )
+            return PARSER_ERROR, None
+
+        if _EMPTY_TEXT_SIGNAL in element_text:
+            # CountNews said >0 but Njoftimet still shows "no notification"
+            # Could be inbox/badge count unrelated to announcements — treat as no notification
+            log.info(
+                "CountNews count=%d but Njoftimet still shows empty message. "
+                "Not a new announcement.", count,
+            )
+            return COUNT_OK, False
+
+        log.info("Confirmed: new announcement on Njoftimet page. Element text: '%s'",
+                 element_text[:120])
+        return COUNT_OK, True
+
+    except requests.HTTPError as exc:
+        code = exc.response.status_code if exc.response is not None else 0
+        if 500 <= code < 600:
+            log.warning("UNIVERSITY_UNAVAILABLE: HTTP %d from Njoftimet", code)
+            return UNIVERSITY_UNAVAILABLE, None
+        log.warning("Unexpected HTTP %d from Njoftimet — treating as session expiry.", code)
+        return SESSION_EXPIRED, None
+    except requests.Timeout:
+        log.warning("NETWORK_OFFLINE: Njoftimet request timed out.")
+        return NETWORK_OFFLINE, None
+    except requests.ConnectionError as exc:
+        log.warning("NETWORK_OFFLINE: Njoftimet connection error — %s", exc)
+        return NETWORK_OFFLINE, None
     except requests.RequestException as exc:
-        log.warning("NETWORK_OFFLINE: request error — %s", exc)
+        log.warning("NETWORK_OFFLINE: Njoftimet request error — %s", exc)
         return NETWORK_OFFLINE, None
 
 
@@ -642,10 +706,16 @@ def run() -> None:
     # ── Load persisted state ──────────────────────────────────────────────────
     state = load_state()
     # None means we have never successfully checked — establish baseline on first poll
+    # For the Njoftimet approach, last_count stores:
+    #   0 = baseline was "no notification" (normal)
+    #   1 = baseline was "notification present" (already alerted)
     baseline_count: int | None = state["last_count"]
 
     if baseline_count is not None:
-        log.info("Restored baseline from state.json: count=%d", baseline_count)
+        log.info(
+            "Restored baseline from state.json: %s",
+            "notification present" if baseline_count else "no notification",
+        )
     else:
         log.info("No prior state — will establish baseline on first successful poll.")
 
@@ -704,10 +774,13 @@ def run() -> None:
                 continue
 
         # ── Session age ───────────────────────────────────────────────────────
+        # login_time is always set before logged_in becomes True, but assert
+        # here so a type checker (and future readers) can see the invariant.
+        assert login_time is not None, "login_time must be set when logged_in is True"
         session_age = (datetime.now(timezone.utc) - login_time).total_seconds()
 
         # ── Poll ──────────────────────────────────────────────────────────────
-        status, count = poll_count(session)
+        status, has_notification = poll_notifications(session)
 
         # ── Handle NETWORK_OFFLINE ─────────────────────────────────────────
         if status == NETWORK_OFFLINE:
@@ -763,7 +836,7 @@ def run() -> None:
         # ── Handle PARSER_ERROR (fatal) ────────────────────────────────────
         if status == PARSER_ERROR:
             log.critical(
-                "PARSER_ERROR: notification count could not be determined. "
+                "PARSER_ERROR: notification state could not be determined. "
                 "The website structure may have changed. Stopping safely."
             )
             _title, _message = _msg("parser_error")
@@ -776,71 +849,79 @@ def run() -> None:
         server_failures  = 0
         server_alerted   = False
 
+        # Convert bool to int for state storage (1 = notification, 0 = none)
+        current_count = 1 if has_notification else 0
+
         log.info(
-            "Count: %d  |  Session age: %s",
-            count, _fmt_duration(session_age),
+            "Page check: %s  |  Session age: %s",
+            "NOTIFICATION PRESENT" if has_notification else "no notification",
+            _fmt_duration(session_age),
         )
 
         # ── First successful poll — establish baseline ─────────────────────
         if baseline_count is None:
-            log.info("Baseline established: count=%d", count)
-            baseline_count = count
-            save_state(count)
+            log.info(
+                "Baseline established: %s",
+                "notification present" if has_notification else "no notification",
+            )
+            baseline_count = current_count
+            # If there's already a notification when we first start, alert before saving
+            # state so that a delivery failure causes a retry on the next poll.
+            if has_notification:
+                log.info("Notification already present at startup — alerting.")
+                _title, _message = _msg("new_notification_page", url=NJOFTIMET_URL)
+                delivered = notify_alert(title=_title, message=_message)
+                if delivered:
+                    save_state(current_count)
+                    log.info("Startup alert delivered and state saved.")
+                else:
+                    log.error(
+                        "Startup alert delivery failed. "
+                        "State NOT saved — will retry on next poll."
+                    )
+                    baseline_count = None  # keep baseline unset so next poll retries
+            else:
+                save_state(current_count)
             log.info("Next check in %s …\n", interval_display)
             time.sleep(CHECK_INTERVAL)
             continue
 
         # ── Compare with baseline ─────────────────────────────────────────
-        if count > baseline_count:
-            log.info(
-                "Notification count increased: %d → %d",
-                baseline_count, count,
-            )
+        if current_count > baseline_count:
+            # Transitioned from "no notification" → "notification present"
+            log.info("New notification detected on Njoftimet page.")
 
-            # Attempt delivery with bounded retries before advancing state
             delivered = False
-            for attempt in range(1, 4):   # up to 3 attempts
-                _title, _message = _msg(
-                    "new_notification",
-                    old_count=baseline_count,
-                    new_count=count,
-                    url=BASE_URL,
-                )
+            _title, _message = _msg("new_notification_page", url=NJOFTIMET_URL)
+            for attempt in range(1, 4):
                 delivered = notify_alert(title=_title, message=_message)
                 if delivered:
                     break
                 if attempt < 3:
                     log.warning(
                         "Notification delivery failed (attempt %d/3). "
-                        "Retrying in 10s …", attempt
+                        "Retrying in 10s …", attempt,
                     )
                     time.sleep(10)
 
             if delivered:
-                # Only advance state AFTER confirmed delivery
-                save_state(count)
-                baseline_count = count
+                save_state(current_count)
+                baseline_count = current_count
                 log.info("Alert delivered and state saved.")
             else:
-                # Do NOT advance state — will retry on next poll
                 log.error(
                     "All notification delivery attempts failed. "
                     "State NOT advanced — will retry on next poll."
                 )
 
-        elif count < baseline_count:
-            # Count decreased — notifications were read/dismissed on the portal.
-            # We update the baseline silently so we don't re-alert on this.
-            log.info(
-                "Count decreased: %d → %d (notifications read/dismissed). "
-                "Updating baseline silently.",
-                baseline_count, count,
-            )
-            baseline_count = count
-            save_state(count)
+        elif current_count < baseline_count:
+            # Notification was read/dismissed — page is back to "no notification"
+            log.info("Page back to 'no notification'. Updating baseline silently.")
+            baseline_count = current_count
+            save_state(current_count)
 
         else:
-            log.info("No change: count=%d", count)
+            log.info("No change.")
 
         log.info("Next check in %s …\n", interval_display)
         time.sleep(CHECK_INTERVAL)

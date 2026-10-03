@@ -28,6 +28,9 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
+# ── website pages ─────────────────────────────────────────────────────────────────
 smu.uni-gjilan.net.html
+njoftimet.html
 
+# ── Visual Studio Code ───────────────────────────────────────────────────────
 .vscode/

@@ -1,15 +1,18 @@
 # SMU UKZ Notification Monitor
 
-Automatically monitors **https://smu.uni-gjilan.net** and sends you a **Telegram message** the moment a new notification appears (e.g. subject/module selection opens).
+Automatically monitors **https://smu.uni-gjilan.net** and sends you a push alert the moment a new notification appears (e.g. subject/module selection opens).
+
+Alerts go to **ntfy** (primary — share with friends) and optionally **Gmail** (personal operational messages).
 
 ---
 
 ## How it works
 
 1. Logs in to SMU with your credentials
-2. Every 2 minutes, calls the portal's `/Home/CountNews` endpoint
-3. If the count changes from `0` to anything higher → sends you a Telegram alert instantly
-4. If the session expires, it automatically logs back in and keeps running
+2. Every 2 minutes, calls the portal's `/Home/CountNews` endpoint (25 bytes)
+3. If the count is greater than zero, loads the Njoftimet page to confirm a real announcement
+4. Sends a push notification via ntfy and/or an email via Gmail
+5. If the session expires, it automatically re-logs in and keeps running
 
 ---
 
@@ -28,50 +31,59 @@ Open a terminal (PowerShell or CMD) in this folder and run:
 pip install -r requirements.txt
 ```
 
-### 3. Create a Telegram bot (free, takes 2 minutes)
+### 3. Set up ntfy (free, takes 2 minutes)
 
-You'll receive alerts on your phone via Telegram.
+ntfy is a free push notification service. You receive alerts on your phone.
 
-1. Open Telegram and search for **@BotFather**
-2. Send the message `/newbot`
-3. Give it any name, e.g. `UKZ Monitor`
-4. BotFather will reply with a **token** that looks like:  
-   `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`  
-   → Copy this token
+1. Install the **ntfy** app on your phone: https://ntfy.sh
+2. In the app, subscribe to a topic — pick any name that is hard to guess,  
+   e.g. `ukz-monitor-abc123`. **Keep it secret — it acts like a password.**
+3. That topic name goes into `.env` as `NTFY_TOPIC`.
 
-5. Now find your **Chat ID**:
-   - Start a chat with your new bot (search for its username and press Start)
-   - Open this URL in your browser, replacing `TOKEN` with your actual token:  
-     `https://api.telegram.org/botTOKEN/getUpdates`
-   - Look for `"chat":{"id": 123456789}` — that number is your Chat ID
+### 4. (Optional) Set up Gmail alerts
 
-### 4. Fill in `.env`
+Gmail alerts are sent only to you — they carry operational messages like  
+"login failed" or "monitor stopped". They are not sent to your friends.
 
-Open the `.env` file in this folder and fill in your values:
+To send email from Python you need a **Gmail App Password** (not your real password):
+
+1. Go to https://myaccount.google.com/apppasswords
+2. Create an app password for "Mail"
+3. Copy the 16-character code into `.env` as `GMAIL_APP_PASS`
+
+### 5. Fill in `.env`
+
+Copy `.env.example` to `.env` and fill in your values:
 
 ```
-SMU_USERNAME=your_student_number_or_email
+SMU_USERNAME=your_student_number
 SMU_PASSWORD=your_password
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-TELEGRAM_CHAT_ID=123456789
+
+NTFY_TOPIC=your-secret-topic-name
+NTFY_SERVER=https://ntfy.sh
+
+# Optional — leave the placeholder values to disable Gmail
+GMAIL_SENDER=your_email@gmail.com
+GMAIL_APP_PASS=xxxx xxxx xxxx xxxx
+GMAIL_RECIPIENT=your_email@gmail.com
+
 CHECK_INTERVAL=120
 ```
 
-> `CHECK_INTERVAL` is in seconds. `120` = check every 2 minutes.
+> `CHECK_INTERVAL` is in seconds. `120` = check every 2 minutes. Min: 60, max: 3600.
 
-### 5. Run the monitor
+### 6. Run the monitor
 
 ```
 python monitor.py
 ```
 
-You should immediately receive a Telegram message: **"🟢 SMU Monitor started"**
-
-Leave the terminal open (or run it on your old laptop). The script will keep running until you stop it with `Ctrl+C`.
+You should immediately receive a status email (if Gmail is configured).  
+Leave the terminal open, or run it on a spare machine. Stop with `Ctrl+C`.
 
 ---
 
-## Running it automatically when the laptop starts (optional)
+## Running automatically when the computer starts (optional)
 
 ### Windows — Task Scheduler
 
@@ -92,9 +104,12 @@ Leave the terminal open (or run it on your old laptop). The script will keep run
 | File | Purpose |
 |------|---------|
 | `monitor.py` | Main script — run this |
-| `.env` | Your credentials (never share this) |
+| `.env` | Your credentials and config (never share or commit this) |
+| `.env.example` | Template — copy to `.env` and fill in |
+| `messages.json` | Notification message templates (edit titles/text freely) |
 | `requirements.txt` | Python dependencies |
-| `monitor.log` | Log file (created automatically when script runs) |
+| `logs/monitor.log` | Log file (created automatically) |
+| `state.json` | Persists notification baseline across restarts (auto-managed) |
 
 ---
 
@@ -103,6 +118,8 @@ Leave the terminal open (or run it on your old laptop). The script will keep run
 | Problem | Fix |
 |---------|-----|
 | `Login failed` | Double-check your username/password in `.env` |
-| No Telegram message | Verify bot token and chat ID; make sure you started a chat with the bot |
+| No ntfy notification | Make sure `NTFY_TOPIC` is set and you subscribed to that exact topic in the app |
+| No Gmail email | Check `GMAIL_SENDER`, `GMAIL_APP_PASS`, `GMAIL_RECIPIENT` — use an App Password, not your real password |
 | `ModuleNotFoundError` | Run `pip install -r requirements.txt` again |
-| Script stops after a while | Normal — just restart it, or set it up in Task Scheduler |
+| Monitor stops after a while | Set it up in Task Scheduler so it restarts automatically |
+| Gets re-alerted on every restart | Delete `state.json` to reset the baseline, or let it run once to re-establish it |

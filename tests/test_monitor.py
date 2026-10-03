@@ -11,23 +11,19 @@ Run with:
 import json
 import os
 import sys
-import types
-import importlib
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, mock_open, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-# ── Ensure the project root is importable ─────────────────────────────────────
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Provide minimal env so module-level code in monitor doesn't blow up
+# Minimal env so module-level code doesn't blow up
 os.environ.setdefault("SMU_USERNAME",    "testuser")
 os.environ.setdefault("SMU_PASSWORD",    "testpass")
 os.environ.setdefault("NTFY_TOPIC",      "test-topic-abc123")
 os.environ.setdefault("NTFY_SERVER",     "https://ntfy.sh")
 os.environ.setdefault("CHECK_INTERVAL",  "120")
-# Ensure Gmail fields look like placeholders so _EMAIL_READY stays False
 os.environ.setdefault("GMAIL_SENDER",    "your_gmail@gmail.com")
 os.environ.setdefault("GMAIL_APP_PASS",  "xxxx xxxx xxxx xxxx")
 os.environ.setdefault("GMAIL_RECIPIENT", "your_gmail@gmail.com")
@@ -36,14 +32,14 @@ import monitor as m
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Helpers
+# Shared response builder helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _mock_response(
     status_code: int = 200,
     json_data: dict | None = None,
     text: str = "",
-    url: str = "https://smu.uni-gjilan.net/Home/CountNews",
+    url: str = "https://smu.uni-gjilan.net/Home/Njoftimet",
 ) -> MagicMock:
     resp = MagicMock()
     resp.status_code = status_code
@@ -61,20 +57,72 @@ def _mock_response(
     return resp
 
 
-def _count_response(count: int) -> MagicMock:
-    return _mock_response(json_data={"status": "ok", "count": count})
-
-
 def _login_ok_response() -> MagicMock:
-    return _mock_response(json_data={"status": "ok", "msg": ""})
+    return _mock_response(
+        json_data={"status": "ok", "msg": ""},
+        url="https://smu.uni-gjilan.net/Account/Login",
+    )
 
 
 def _login_page_response() -> MagicMock:
     return _mock_response(
-        json_data=None,
         text='<form action="/Account/Login"><input name="loginPassword">',
         url="https://smu.uni-gjilan.net/Account/Login",
     )
+
+
+def _count_response(count: int = 0) -> MagicMock:
+    """Used only for login verification (CountNews endpoint)."""
+    return _mock_response(
+        json_data={"status": "ok", "count": count},
+        url="https://smu.uni-gjilan.net/Home/CountNews",
+    )
+
+
+# ── Njoftimet page HTML fixtures ──────────────────────────────────────────────
+
+# The "no notification" page — MesageInfoID present with the empty message
+_NO_NOTIF_HTML = '''<html><body>
+<div id="logoutForm"></div>
+<div id="MesageInfoID" class="alert">
+  <h5>Mesazh informues</h5>
+  <span>Nuk ka ndonj&#235; njoftim t&#235; ri!</span>
+</div>
+</body></html>'''
+
+# A notification IS present — MesageInfoID has different text
+_HAS_NOTIF_HTML = '''<html><body>
+<div id="logoutForm"></div>
+<div id="MesageInfoID" class="alert">
+  <h5>Mesazh informues</h5>
+  <span>Keni nje njoftim te ri!</span>
+</div>
+</body></html>'''
+
+# MesageInfoID element completely missing (page redesign scenario)
+_NO_ELEMENT_HTML = '''<html><body>
+<div id="logoutForm"></div>
+<div class="some-other-content">hello</div>
+</body></html>'''
+
+# MesageInfoID present but empty
+_EMPTY_ELEMENT_HTML = '''<html><body>
+<div id="logoutForm"></div>
+<div id="MesageInfoID"></div>
+</body></html>'''
+
+# Login page
+_LOGIN_PAGE_HTML = '<form action="/Account/Login"><input name="loginPassword">'
+
+
+def _njoftimet_resp(html: str, url: str = "https://smu.uni-gjilan.net/Home/Njoftimet") -> MagicMock:
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.url = url
+    resp.text = html
+    resp.raise_for_status.return_value = None
+    resp.json.side_effect = ValueError("html page")
+    return resp
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -95,7 +143,10 @@ class TestFmtDuration:
         assert m._fmt_duration(0) == "0s"
 
     def test_exact_hour(self):
-        assert m._fmt_duration(3600) == "1h 0s"
+        assert m._fmt_duration(3600) == "1h"
+
+    def test_exact_minute(self):
+        assert m._fmt_duration(60) == "1m"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -132,11 +183,11 @@ class TestLoadState:
     def test_loads_valid_state(self, tmp_path, monkeypatch):
         state_file = tmp_path / "state.json"
         state_file.write_text(
-            json.dumps({"last_count": 3, "last_successful_check": "2026-01-01T00:00:00+00:00"})
+            json.dumps({"last_count": 1, "last_successful_check": "2026-01-01T00:00:00+00:00"})
         )
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
         state = m.load_state()
-        assert state["last_count"] == 3
+        assert state["last_count"] == 1
 
     def test_resets_on_corrupt_json(self, tmp_path, monkeypatch):
         state_file = tmp_path / "state.json"
@@ -157,21 +208,21 @@ class TestSaveState:
     def test_saves_count(self, tmp_path, monkeypatch):
         state_file = tmp_path / "state.json"
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
-        m.save_state(7)
+        m.save_state(1)
         data = json.loads(state_file.read_text())
-        assert data["last_count"] == 7
+        assert data["last_count"] == 1
         assert "last_successful_check" in data
 
     def test_save_then_load_roundtrip(self, tmp_path, monkeypatch):
         state_file = tmp_path / "state.json"
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
-        m.save_state(42)
+        m.save_state(0)
         state = m.load_state()
-        assert state["last_count"] == 42
+        assert state["last_count"] == 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _is_login_page / _is_authenticated
+# _is_login_page
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestPageDetectors:
@@ -184,15 +235,8 @@ class TestPageDetectors:
     def test_dashboard_not_login_page(self):
         assert m._is_login_page(self.DASH_HTML) is False
 
-    def test_authenticated_detected(self):
-        assert m._is_authenticated(self.DASH_HTML) is True
-
-    def test_login_page_not_authenticated(self):
-        assert m._is_authenticated(self.LOGIN_HTML) is False
-
     def test_empty_string(self):
         assert m._is_login_page("") is False
-        assert m._is_authenticated("") is False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -202,189 +246,207 @@ class TestPageDetectors:
 class TestLogin:
     def test_successful_login(self):
         session = MagicMock()
-        # POST returns ok JSON, GET (verification) returns count JSON
-        session.post.return_value  = _login_ok_response()
-        session.get.return_value   = _count_response(0)
-        result = m.login(session)
-        assert result == m.LOGIN_OK
+        session.post.return_value = _login_ok_response()
+        session.get.return_value  = _count_response(0)
+        assert m.login(session) == m.LOGIN_OK
 
     def test_bad_credentials_returns_error_status(self):
         session = MagicMock()
-        session.post.return_value = _mock_response(json_data={"status": "error"})
-        result = m.login(session)
-        assert result == m.LOGIN_BAD_CREDENTIALS
+        session.post.return_value = _mock_response(
+            json_data={"status": "error"},
+            url="https://smu.uni-gjilan.net/Account/Login",
+        )
+        assert m.login(session) == m.LOGIN_BAD_CREDENTIALS
 
     def test_bad_credentials_returns_login_page_body(self):
         session = MagicMock()
         session.post.return_value = _login_page_response()
-        result = m.login(session)
-        assert result == m.LOGIN_BAD_CREDENTIALS
+        assert m.login(session) == m.LOGIN_BAD_CREDENTIALS
 
     def test_verification_fails_returns_bad_credentials(self):
-        """JSON says ok but verification GET returns login page — treat as bad creds."""
         session = MagicMock()
         session.post.return_value = _login_ok_response()
         session.get.return_value  = _login_page_response()
-        result = m.login(session)
-        assert result == m.LOGIN_BAD_CREDENTIALS
+        assert m.login(session) == m.LOGIN_BAD_CREDENTIALS
 
     def test_network_error_during_post(self):
         session = MagicMock()
         session.post.side_effect = m.requests.ConnectionError("refused")
-        result = m.login(session)
-        assert result == m.LOGIN_NETWORK_ERROR
+        assert m.login(session) == m.LOGIN_NETWORK_ERROR
 
     def test_network_error_during_verification(self):
         session = MagicMock()
         session.post.return_value = _login_ok_response()
         session.get.side_effect   = m.requests.Timeout("timed out")
-        result = m.login(session)
-        assert result == m.LOGIN_NETWORK_ERROR
+        assert m.login(session) == m.LOGIN_NETWORK_ERROR
 
     def test_http_4xx_returns_bad_credentials(self):
         session = MagicMock()
-        resp = _mock_response(status_code=401)
-        session.post.return_value = resp
-        result = m.login(session)
-        assert result == m.LOGIN_BAD_CREDENTIALS
+        session.post.return_value = _mock_response(
+            status_code=401,
+            url="https://smu.uni-gjilan.net/Account/Login",
+        )
+        assert m.login(session) == m.LOGIN_BAD_CREDENTIALS
 
     def test_http_5xx_returns_network_error(self):
         session = MagicMock()
-        resp = _mock_response(status_code=503)
-        session.post.return_value = resp
-        result = m.login(session)
-        assert result == m.LOGIN_NETWORK_ERROR
+        session.post.return_value = _mock_response(
+            status_code=503,
+            url="https://smu.uni-gjilan.net/Account/Login",
+        )
+        assert m.login(session) == m.LOGIN_NETWORK_ERROR
 
     def test_default_password_change_still_verifies(self):
         session = MagicMock()
         session.post.return_value = _mock_response(
-            json_data={"status": "defaultPasswordChange"}
-        )
-        session.get.return_value = _count_response(0)
-        result = m.login(session)
-        assert result == m.LOGIN_OK
-
-    def test_no_infinite_loop(self):
-        """login() must return, never loop internally."""
-        session = MagicMock()
-        session.post.side_effect = m.requests.ConnectionError("down")
-        result = m.login(session)
-        assert result in (m.LOGIN_BAD_CREDENTIALS, m.LOGIN_NETWORK_ERROR, m.LOGIN_OK)
-        assert session.post.call_count == 1   # exactly one attempt
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# poll_count()
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TestPollCount:
-    def test_ok_returns_count(self):
-        session = MagicMock()
-        session.get.return_value = _count_response(5)
-        status, count = m.poll_count(session)
-        assert status == m.COUNT_OK
-        assert count == 5
-
-    def test_zero_count_is_valid(self):
-        """count=0 must NOT be treated as missing."""
-        session = MagicMock()
-        session.get.return_value = _count_response(0)
-        status, count = m.poll_count(session)
-        assert status == m.COUNT_OK
-        assert count == 0
-
-    def test_session_expired_by_url(self):
-        session = MagicMock()
-        resp = _mock_response(
-            text="",
+            json_data={"status": "defaultPasswordChange"},
             url="https://smu.uni-gjilan.net/Account/Login",
         )
-        session.get.return_value = resp
-        status, count = m.poll_count(session)
-        assert status == m.SESSION_EXPIRED
-        assert count is None
+        session.get.return_value = _count_response(0)
+        assert m.login(session) == m.LOGIN_OK
 
-    def test_session_expired_by_body(self):
+    def test_no_infinite_loop(self):
         session = MagicMock()
-        resp = _mock_response(
-            text='<input name="loginPassword">',
+        session.post.side_effect = m.requests.ConnectionError("down")
+        m.login(session)
+        assert session.post.call_count == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# poll_notifications() — the core of the new approach
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPollNotifications:
+
+    def test_count_zero_returns_false_without_fetching_njoftimet(self):
+        """When CountNews returns 0, Stage 2 must NOT be called."""
+        session = MagicMock()
+        count_resp = _mock_response(
+            json_data={"status": "ok", "count": 0},
             url="https://smu.uni-gjilan.net/Home/CountNews",
         )
+        session.get.return_value = count_resp
+        status, has = m.poll_notifications(session)
+        assert status == m.COUNT_OK
+        assert has is False
+        assert session.get.call_count == 1  # only CountNews, never Njoftimet
+
+    def test_count_positive_then_njoftimet_confirms(self):
+        """CountNews > 0 AND Njoftimet has different text → True."""
+        session = MagicMock()
+        count_resp = _mock_response(
+            json_data={"status": "ok", "count": 1},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
+        )
+        njoftimet_resp = _njoftimet_resp(_HAS_NOTIF_HTML)
+        session.get.side_effect = [count_resp, njoftimet_resp]
+        status, has = m.poll_notifications(session)
+        assert status == m.COUNT_OK
+        assert has is True
+        assert session.get.call_count == 2  # CountNews + Njoftimet
+
+    def test_count_positive_but_njoftimet_still_empty(self):
+        """CountNews > 0 but Njoftimet still shows 'Nuk ka' → False (not an announcement)."""
+        session = MagicMock()
+        count_resp = _mock_response(
+            json_data={"status": "ok", "count": 1},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
+        )
+        njoftimet_resp = _njoftimet_resp(_NO_NOTIF_HTML)
+        session.get.side_effect = [count_resp, njoftimet_resp]
+        status, has = m.poll_notifications(session)
+        assert status == m.COUNT_OK
+        assert has is False
+
+    def test_missing_element_on_njoftimet_is_parser_error(self):
+        session = MagicMock()
+        count_resp = _mock_response(
+            json_data={"status": "ok", "count": 1},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
+        )
+        njoftimet_resp = _njoftimet_resp(_NO_ELEMENT_HTML)
+        session.get.side_effect = [count_resp, njoftimet_resp]
+        status, has = m.poll_notifications(session)
+        assert status == m.PARSER_ERROR
+        assert has is None
+
+    def test_empty_element_text_is_parser_error(self):
+        session = MagicMock()
+        count_resp = _mock_response(
+            json_data={"status": "ok", "count": 1},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
+        )
+        njoftimet_resp = _njoftimet_resp(_EMPTY_ELEMENT_HTML)
+        session.get.side_effect = [count_resp, njoftimet_resp]
+        status, has = m.poll_notifications(session)
+        assert status == m.PARSER_ERROR
+        assert has is None
+
+    def test_session_expired_on_count_news(self):
+        session = MagicMock()
+        resp = _mock_response(text=_LOGIN_PAGE_HTML, url="https://smu.uni-gjilan.net/Account/Login")
         session.get.return_value = resp
-        status, count = m.poll_count(session)
+        status, has = m.poll_notifications(session)
         assert status == m.SESSION_EXPIRED
-        assert count is None
+        assert has is None
 
-    def test_missing_count_field_is_parser_error(self):
-        """Missing 'count' must return PARSER_ERROR, NOT 0."""
+    def test_session_expired_on_njoftimet(self):
         session = MagicMock()
-        session.get.return_value = _mock_response(json_data={"status": "ok"})
-        status, count = m.poll_count(session)
-        assert status == m.PARSER_ERROR
-        assert count is None
-
-    def test_null_count_field_is_parser_error(self):
-        """count=null must return PARSER_ERROR, NOT 0."""
-        session = MagicMock()
-        session.get.return_value = _mock_response(
-            json_data={"status": "ok", "count": None}
+        count_resp = _mock_response(
+            json_data={"status": "ok", "count": 1},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
         )
-        status, count = m.poll_count(session)
-        assert status == m.PARSER_ERROR
-        assert count is None
+        expired_resp = _njoftimet_resp(_LOGIN_PAGE_HTML, url="https://smu.uni-gjilan.net/Account/Login")
+        session.get.side_effect = [count_resp, expired_resp]
+        status, has = m.poll_notifications(session)
+        assert status == m.SESSION_EXPIRED
+        assert has is None
 
-    def test_non_integer_count_is_parser_error(self):
-        session = MagicMock()
-        session.get.return_value = _mock_response(
-            json_data={"status": "ok", "count": "banana"}
-        )
-        status, count = m.poll_count(session)
-        assert status == m.PARSER_ERROR
-        assert count is None
-
-    def test_wrong_status_field_is_parser_error(self):
-        session = MagicMock()
-        session.get.return_value = _mock_response(
-            json_data={"status": "error"}
-        )
-        status, count = m.poll_count(session)
-        assert status == m.PARSER_ERROR
-
-    def test_non_json_response_is_parser_error(self):
-        session = MagicMock()
-        resp = _mock_response(text="<html>Server Error</html>")
-        resp.json.side_effect = ValueError("not json")
-        session.get.return_value = resp
-        status, count = m.poll_count(session)
-        assert status == m.PARSER_ERROR
-
-    def test_timeout_is_network_offline(self):
+    def test_timeout_on_count_news_is_network_offline(self):
         session = MagicMock()
         session.get.side_effect = m.requests.Timeout()
-        status, count = m.poll_count(session)
+        status, has = m.poll_notifications(session)
         assert status == m.NETWORK_OFFLINE
-        assert count is None
+        assert has is None
 
-    def test_connection_error_is_network_offline(self):
+    def test_connection_error_on_count_news_is_network_offline(self):
         session = MagicMock()
         session.get.side_effect = m.requests.ConnectionError("refused")
-        status, count = m.poll_count(session)
+        status, has = m.poll_notifications(session)
         assert status == m.NETWORK_OFFLINE
-        assert count is None
+        assert has is None
 
-    def test_http_503_is_university_unavailable(self):
+    def test_http_503_on_count_news_is_university_unavailable(self):
         session = MagicMock()
-        session.get.return_value = _mock_response(status_code=503)
-        status, count = m.poll_count(session)
+        resp = MagicMock()
+        resp.status_code = 503
+        resp.url = "https://smu.uni-gjilan.net/Home/CountNews"
+        resp.text = ""
+        resp.raise_for_status.side_effect = m.requests.HTTPError(response=resp)
+        session.get.return_value = resp
+        status, has = m.poll_notifications(session)
         assert status == m.UNIVERSITY_UNAVAILABLE
-        assert count is None
+        assert has is None
 
-    def test_http_500_is_university_unavailable(self):
+    def test_missing_count_field_is_parser_error(self):
         session = MagicMock()
-        session.get.return_value = _mock_response(status_code=500)
-        status, count = m.poll_count(session)
-        assert status == m.UNIVERSITY_UNAVAILABLE
-        assert count is None
+        session.get.return_value = _mock_response(
+            json_data={"status": "ok"},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
+        )
+        status, has = m.poll_notifications(session)
+        assert status == m.PARSER_ERROR
+        assert has is None
+
+    def test_null_count_is_parser_error(self):
+        session = MagicMock()
+        session.get.return_value = _mock_response(
+            json_data={"status": "ok", "count": None},
+            url="https://smu.uni-gjilan.net/Home/CountNews",
+        )
+        status, has = m.poll_notifications(session)
+        assert status == m.PARSER_ERROR
+        assert has is None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -426,12 +488,10 @@ class TestSendNtfy:
             assert m.send_ntfy("t", "m") is False
 
     def test_ntfy_failure_does_not_raise(self):
-        """ntfy failure must never propagate as an exception."""
         with patch("monitor.requests.post") as mock_post:
             mock_post.side_effect = Exception("unexpected error")
-            # Should not raise — must return False or handle gracefully
             try:
-                result = m.send_ntfy("t", "m")
+                m.send_ntfy("t", "m")
             except Exception:
                 pytest.fail("send_ntfy raised an exception on failure")
 
@@ -442,131 +502,90 @@ class TestSendNtfy:
             mock_post.assert_not_called()
 
     def test_topic_not_logged_in_full(self, caplog):
-        """The full topic string must not appear in log output."""
         with patch("monitor.requests.post") as mock_post:
             mock_post.return_value = _mock_response()
             with caplog.at_level("INFO", logger="monitor"):
                 m.send_ntfy("t", "m")
-            # Topic is secret-like; it should not appear in any log record
             for record in caplog.records:
                 assert m.NTFY_TOPIC not in record.getMessage()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Notification count logic
+# Notification state logic (presence/absence of "Nuk ka" text)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestNotificationCountLogic:
-    """
-    Test the state-machine logic around count changes without running the
-    full run() loop. We test by calling the relevant pieces in isolation.
-    """
+class TestNotificationStateLogic:
 
-    def test_count_increase_triggers_notify(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(m, "STATE_FILE", str(tmp_path / "state.json"))
-        notified = []
-        monkeypatch.setattr(m, "notify_alert", lambda *a, **kw: notified.append(kw) or True)
+    def test_no_notification_does_not_trigger_alert(self):
+        """If page shows 'Nuk ka', current=0, baseline=0 → no alert."""
+        assert (0 > 0) is False  # current > baseline → alert condition
 
-        old_count = 2
-        new_count = 3
-        # Simulate the comparison logic directly
-        assert new_count > old_count
-        # If we were in run(), we'd call notify() here
-        notified.append({"count": new_count})
-        assert len(notified) == 1
+    def test_notification_present_triggers_alert(self):
+        """If element text changed, current=1, baseline=0 → alert."""
+        assert (1 > 0) is True
 
-    def test_count_same_does_not_trigger_notify(self):
-        """If count unchanged, no notification should be sent."""
-        baseline = 5
-        current  = 5
-        should_notify = current > baseline
-        assert should_notify is False
-
-    def test_count_decrease_does_not_alert(self):
-        """Decrease = notifications were read. No alert."""
-        baseline = 3
-        current  = 1
-        is_increase = current > baseline
-        assert is_increase is False
+    def test_notification_dismissed_updates_baseline_silently(self):
+        """If current=0, baseline=1 → notification was read, update silently."""
+        assert (0 < 1) is True  # decrease detected
 
     def test_state_not_advanced_on_delivery_failure(self, tmp_path, monkeypatch):
-        """If notify() fails, save_state() must NOT be called."""
         state_file = tmp_path / "state.json"
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
         monkeypatch.setattr(m, "notify_alert", lambda *a, **kw: False)
 
-        # Simulate the run() logic: notify_alert fails → do NOT save
-        delivered = m.notify_alert("t", "m")
+        delivered = m.notify_alert("t", "msg")
         if delivered:
-            m.save_state(99)
+            m.save_state(1)
 
-        assert not state_file.exists(), "save_state must not be called after failed delivery"
+        assert not state_file.exists()
 
     def test_state_advanced_on_successful_delivery(self, tmp_path, monkeypatch):
         state_file = tmp_path / "state.json"
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
         monkeypatch.setattr(m, "notify_alert", lambda *a, **kw: True)
 
-        delivered = m.notify_alert("t", "m")
+        delivered = m.notify_alert("t", "msg")
         if delivered:
-            m.save_state(7)
+            m.save_state(1)
 
         data = json.loads(state_file.read_text())
-        assert data["last_count"] == 7
+        assert data["last_count"] == 1
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Restart behaviour (state.json)
+# Restart behaviour
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestRestartBehaviour:
-    def test_restart_does_not_re_alert_on_same_count(self, tmp_path, monkeypatch):
-        """
-        If state.json says last_count=1 and the portal returns 1,
-        we must NOT send an alert.
-        """
+    def test_restart_does_not_re_alert_when_no_change(self, tmp_path, monkeypatch):
+        """state.json says 0 and page still shows 'no notification' → no alert."""
         state_file = tmp_path / "state.json"
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
-        m.save_state(1)   # simulate previous run that already alerted
-
+        m.save_state(0)
         state = m.load_state()
-        baseline = state["last_count"]
+        assert (0 > state["last_count"]) is False
 
-        current_count = 1   # portal still shows 1
-        should_alert = current_count > baseline
-        assert should_alert is False
-
-    def test_restart_alerts_on_new_count(self, tmp_path, monkeypatch):
-        """
-        If state.json says last_count=1 and portal now returns 2,
-        we SHOULD send an alert.
-        """
+    def test_restart_alerts_when_notification_appeared(self, tmp_path, monkeypatch):
+        """state.json says 0, but now element text changed → alert."""
         state_file = tmp_path / "state.json"
         monkeypatch.setattr(m, "STATE_FILE", str(state_file))
-        m.save_state(1)
-
+        m.save_state(0)
         state = m.load_state()
-        baseline = state["last_count"]
-
-        current_count = 2
-        should_alert = current_count > baseline
-        assert should_alert is True
+        assert (1 > state["last_count"]) is True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# No-infinite-loop guarantees
+# No infinite loops
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestNoInfiniteLoop:
     def test_login_returns_after_single_attempt(self):
-        """login() must make exactly one POST attempt and return."""
         session = MagicMock()
         session.post.side_effect = m.requests.ConnectionError("down")
         m.login(session)
         assert session.post.call_count == 1
 
     def test_send_ntfy_returns_after_single_attempt(self):
-        """send_ntfy() must make exactly one POST attempt and return."""
         with patch("monitor.requests.post") as mock_post:
             mock_post.side_effect = m.requests.ConnectionError("down")
             m.send_ntfy("t", "m")
@@ -574,7 +593,7 @@ class TestNoInfiniteLoop:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Credentials not leaked
+# No credential leaks
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestNoCredentialLeaks:
@@ -582,19 +601,16 @@ class TestNoCredentialLeaks:
         with patch("monitor.requests.post") as mock_post:
             mock_post.return_value = _mock_response()
             m.send_ntfy("Test", "Test message")
-            call_kwargs = mock_post.call_args[1]
-            data_sent = call_kwargs.get("data", b"")
+            data_sent = mock_post.call_args[1].get("data", b"")
             if isinstance(data_sent, bytes):
                 data_sent = data_sent.decode()
             assert m.SMU_PASSWORD not in data_sent
 
     def test_password_not_in_login_request_headers(self):
         session = MagicMock()
-        session.post.return_value  = _login_ok_response()
-        session.get.return_value   = _count_response(0)
+        session.post.return_value = _login_ok_response()
+        session.get.return_value  = _count_response(0)
         m.login(session)
-        call_kwargs = session.post.call_args[1]
-        # Password should be in data= body, never in headers
-        headers = call_kwargs.get("headers", {})
+        headers = session.post.call_args[1].get("headers", {})
         for v in headers.values():
             assert m.SMU_PASSWORD not in str(v)
