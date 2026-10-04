@@ -99,7 +99,7 @@ except ZoneInfoNotFoundError:
 _START_H, _START_M = _parse_hhmm(_RAW_START, "ACTIVE_START", "08:00")
 _END_H,   _END_M   = _parse_hhmm(_RAW_END,   "ACTIVE_END",   "22:00")
 
-BASE_URL       = "https://smu.uni-gjilan.net"
+BASE_URL       = os.getenv("SMU_BASE_URL", "https://smu.uni-gjilan.net").strip().rstrip("/")
 LOGIN_URL      = f"{BASE_URL}/Account/Login"
 COUNT_URL      = f"{BASE_URL}/Home/CountNews"   # Stage 1 lightweight poll (every check) + post-login verification
 NJOFTIMET_URL  = f"{BASE_URL}/Home/Njoftimet"  # Stage 2 confirmation

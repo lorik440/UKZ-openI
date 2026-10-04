@@ -1,0 +1,902 @@
+<html lang="en" class=" js flexbox flexboxlegacy canvas canvastext webgl no-touch geolocation postmessage no-websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers no-applicationcache svg inlinesvg smil svgclippaths" data-default-theme="light" style=""><head><link href="/Content/bootstrap.min.css" rel="stylesheet">
+<link href="/Content/font-awesome.css" rel="stylesheet">
+<link href="/Content/material-icons.css" rel="stylesheet">
+<link href="/Content/bootstrap-datepicker.min.css" rel="stylesheet">
+<link href="/Content/bootstrap-datetimepicker.min.css" rel="stylesheet">
+<link href="/Scripts/select2.css" rel="stylesheet">
+
+<script src="/Scripts/jquery-1.11.3.min.js"></script>
+
+    
+        <meta charset="UTF-8">
+        <meta name="description" content="Universiteti Kadri Zeka Gjilan">
+        <meta name="keywords" content="Kadri Zeka, Universiteti i Gjilanit, Gjilan">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Njoftime - SMU</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="shortcut icon" href="/Images/UniversitetiLlogo/SMU_logo_.png" type="image/x-icon" async="">
+        <link href="https://fonts.googleapis.com/css?family=Cairo:300,400,700" rel="stylesheet" async="">
+        <script src="/Scripts/Help/intro.min.js" async=""></script>
+        <link href="/Scripts/Help/introjs.min.css" rel="stylesheet" async="">
+        <link href="/Content/app.style1.min.css" rel="stylesheet" async="">
+
+        <link rel="manifest" href="/manifest.json">
+        <!-- Tell the browser it's a PWA -->
+        <meta name="mobile-web-app-capable" content="yes">
+        <!-- Tell iOS it's a PWA -->
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="#3A579B">
+
+            <script>
+                $(document).ready(function () {
+                    let styleForUser = localStorage.getItem("UserStyle");
+                    if (styleForUser == null) {
+                        styleForUser = "style2";
+                    }
+                    let applyedStyle = "/Content/app." + styleForUser + ".min.css";
+                    $("#S_Selected").attr("href", applyedStyle)
+                });
+            </script>
+            <link href="/Content/app.style2.min.css" rel="stylesheet" id="S_Selected">
+
+        <link href="/Content/Loader.css" rel="stylesheet">
+<link href="/Content/DataTables/responsive.bootstrap4.min.css" rel="stylesheet">
+<link href="/Content/DataTables/dataTables.bootstrap4.min.css" rel="stylesheet">
+
+        <script src="/Scripts/modernizr-2.8.3.js"></script>
+
+        <script src="https://cdn.tiny.cloud/1/46dh6df79xvhvbgoz5leye5jpr6zd1v1eom0c4l5ah1lwkp1/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    </head>
+    <body style="background-color:#ECF0F1">
+        <div class="loader-gif" style="display: none;"></div>
+        <div class="page-topbar">
+            <div class="logo-area"></div>
+            <div class="quick-area">
+                <div class="pull-left slantit">
+                    <ul class="info-menu left-links list-inline list-unstyled">
+                        <li class="sidebar-toggle-wrap">
+                            <a href="#" id="meny-shift" class="sidebar_toggle">
+                                <div class="menu-bar">
+                                    <div class="menu-bar-line"></div>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="pull-left pagetitle">
+                    <span class="line"></span>
+                    <h1 style="font-size:20px">Njoftime</h1>
+                    <div></div>
+                </div>
+                <div class="pull-left quickleft" style="">
+                    <ul class="info-menu right-links list-inline list-unstyled">
+                        <li class="menu-profile-toggle tab" style="margin-top: 16px;margin-left: 8px;">
+                            <a href="javascript:void(0);" onclick="javascript:introJs().start();">
+                                <i class="fa fa-lightbulb-o" style="font-size:23px;margin-left:-15px;color:white;z-index:999999 !important" aria-hidden="true" title="Ndihma"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="pull-right quickright">
+                    <ul class="info-menu left-links list-inline list-unstyled">
+                        <li class="dropdown profile tab">
+<form action="/Account/LogOff" id="logoutForm" method="post"><input name="__RequestVerificationToken" type="hidden" value="ZBMrhWCnKMPR2XF4aqV2vyLa_3AYXem3r0-KvrIzTPen_c_NkztqRfcVtJz9OizJPZKiGro5KaMfgDIIvz8uooGzb0hkEbzcqZBLI6MJc6i6Stc6b6xgzRAoFLHCswAL8pvYKZIh50e5q4RBCZptBw2">                                <a href="#" class="dropdown-toggle toggle" id="photoProfil">
+                                    <img src="\KartelaFotoStudenti\NiveliBachelor\a984c0b0-af55-448b-9072-3439a598da862005.jpeg" alt="user-image" class="img-circle img-inline" title="Lorik Bajrami" data-step="1" data-position="left" data-intro="Nëse klikoni këtu sistemi ju ofron mundësin për çkyqje, menaxhimin e profilit dhe ju ofron qasje në manual të përdorimit.">
+                                    <i class="fa fa-caret-down" aria-hidden="true"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-right profile login-menu">
+                                    <li id="profili">
+                                        <a href="/MenagimiUsers/Profili">
+                                            <i class="material-icons">person</i> Profili
+                                        </a>
+                                    </li>
+                                        <li>
+                                            <a href="/DownloadManualet">
+                                                <i class="material-icons">insert_drive_file</i> Udhëzues përdorimi
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="/Home/VideoManualet">
+                                                <i class="material-icons">video_library</i> Video manuale
+                                            </a>
+                                        </li>
+                                    <li>
+                                        <a href="/Home/MyReportedBugs">
+                                            <i class="material-icons">bug_report</i>Reported Bugs
+                                        </a>
+                                    </li>
+                                    <li id="shkyqu">
+                                        <a href="javascript:document.getElementById('logoutForm').submit()">
+                                            <i class="material-icons">lock</i> Shkyçu
+                                        </a>
+                                    </li>
+                                </ul>
+</form>                        </li>
+                        <li>
+                        </li>
+                        <li class="chat-toggle-wrapper chat-slant">
+                            <a href="#" class="toggle_chat">
+                                <i class="fa fa-language" id="langIcon" data-step="2" data-position="left" data-intro="Nëse klikoni këtu sistemi ju ofron mundësin për ndryshim të gjuhës së sistemit." aria-hidden="true"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- END TOPBAR -->
+        </div>
+        <!-- Leftbar dhe menyte -->
+        <div class="page-container row-fluid">
+            <!-- Leftbar -->
+            <div class="">
+                <div class="page-sidebar">
+                    <!-- Menyte Kryesore -->
+                    <div class="page-sidebar-wrapper" id="main-menu-wrapper">
+                        <!-- Foto e profilit -->
+                        <div class="profile-info col-sm-12 col-md-12 ng-scope" style="width:100%;text-align:center">
+                            <div class="profile-image text-center col-md-12">
+                                <img src="\KartelaFotoStudenti\NiveliBachelor\a984c0b0-af55-448b-9072-3439a598da862005.jpeg" alt="user-image" class="img-circle img-inline" title="Lorik Bajrami" id="FotoIDDD">
+                                <h5 id="emri" style="text-align:center;padding-top:10px">Lorik Bajrami</h5>
+                            </div>
+                        </div>
+<nav>
+    <ul class="wraplist wrapper-menu">
+            <li>
+                <div class="profile-details col-md-12 col-sm-12 col-xs-12">
+                    <p id="user-name">Student Bachelor</p>
+                </div>
+            </li>
+                <li id="home" class="active">
+                    <a href="/">
+                        <i class="material-icons">home</i>
+                        <span class="title">Fillimi</span>
+                    </a>
+                </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">description</i>
+                            <span class="title">Lëndët</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/StudeniLendaProfesori">Zgjedh lëndet obligative/zgjedhore</a></li>
+                            <li><a href="/Fleteparaqitja">Paraqit provimet</a></li>
+                            <li><a href="/RefuzimiNotes">Lista e rezultateve</a></li>
+                            <li><a href="/TranskriptaNotave">Transkripta notave</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">payment</i>
+                            <span class="title">Pagesat/Kërkesat</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/FletePagesaStudenti">Pagesat</a></li>
+                            <li><a href="/RegjistriNotaveTransferi">Kërkesat për transferim të notave</a></li>
+                            <li><a href="/StdKerkesaDepPlanprogram">Kërkesat departamenti/planprogrami</a></li>
+                            <li><a href="/RequestsStatusChange">Kërkesa për ndrrimin e statusit</a></li>
+                            <li><a href="/KerkesatStudenti">Ndrrimi i kartelës</a></li>
+                            <li><a href="/KerkesaCregjistrimi">Kërkesa për çregjistrim/Pezullim</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">file_download</i>
+                            <span class="title">Shkarko</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/DigitalAttestation">Vërtetimi ONLINE</a></li>
+                            <li><a href="/ShikoRezultatet">Shkarko rezultatet</a></li>
+                            <li><a href="/ShkarkoMaterialin">Shkarko materialet mësimore</a></li>
+                            <li><a href="/SyllabusiStudenti">Syllabusi</a></li>
+                            <li><a href="/TranskriptaNotave/_ListaStudentit">Plan programet</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">notifications</i>
+                            <span class="title">Njoftimet/Tjera...</span>
+                            <span class="arrow material-icons">keyboard_arrow_down</span>
+                        </a>
+                        <ul class="dropdown-content" style="display: block;">
+                            <li><a href="/Home/Njoftimet" class="activeLink">Njoftimet</a></li>
+                            <li><a href="/ShowSemestriStudenti">Semestrat e regjistruara</a></li>
+                            <li><a href="/TemaStudimit">Tema e diplomës</a></li>
+                            <li><a href="/BursaKerkesa">Apliko për bursë</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">event_note</i>
+                            <span class="title">Orari</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/OrariStudenti">Orari i ligjëratave/ushtrimeve</a></li>
+                            <li><a href="/OrariProvimeveStudenti">Orari i provimeve</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">menu</i>
+                            <span class="title">SEVC</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/SEVCStudentPublication">SEVC</a></li>
+                            <li><a href="/SEVCNewsNjoftimet/Njoftimet">Njoftimet SEVC</a></li>
+                            <li><a href="/SEVCAboutUs">Rreth SEVC</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">tab</i>
+                            <span class="title">e-Karriera</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/DashboardCV">CV</a></li>
+                            <li><a href="/CvNotificationStudent">Njoftime dhe ngjarje</a></li>
+                            <li><a href="/JobAnnouncemenStudent">Shpallje pune</a></li>
+                            <li><a href="/Alumni">Regjistro Alumni</a></li>
+                            <li><a href="/AlumniSearch">Kërko Alumni</a></li>
+                            <li><a href="/CompanyStudent">Kompanitë</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">computer</i>
+                            <span class="title">Mësimi Online</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/StudentiVirtual">Klasa Virtuale</a></li>
+                            <li><a href="/DiplomaVirtualStudenti">Mbrojtja virtuale e temës së diplomës</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">access_time</i>
+                            <span class="title">e-Provimi</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/TestingStudenti">e-Provimi</a></li>
+                            <li><a href="/TestingStudenti/SubExam">e-Kolokfiumi</a></li>
+                        </ul>
+                    </li>
+                    <li class="auto dropdown active">
+                        <a href="#">
+                            <i class="material-icons dropbtn">check_box</i>
+                            <span class="title">e-Vijueshmëria</span>
+                            <span class="arrow material-icons">keyboard_arrow_right</span>
+                        </a>
+                        <ul class="dropdown-content">
+                            <li><a href="/StudentAttendance">Vijueshmëria</a></li>
+                            <li><a href="/FixAttendance">Rregullo transaksionet (Checkins)</a></li>
+                        </ul>
+                    </li>
+
+        <li style="text-align:center;">
+            <div id="clockdivActive" title="Nëse nuk jeni aktiv në sistem për këtë kohë ju do të çkyqeni në mënyrë automatike.">
+                <div>
+                    <span class="hoursActive">01</span>
+                    <div class="smalltext">Hours</div>
+                </div>
+                <div>
+                    <span class="minutesActive">59</span>
+                    <div class="smalltext">Minutes</div>
+                </div>
+                <div>
+                    <span class="secondsActive">50</span>
+                    <div class="smalltext">Seconds</div>
+                </div>
+                <h6 id="codeTextActive">Aktiv në sistem edhe:</h6>
+            </div>
+        </li>
+    </ul>
+</nav>
+
+<style type="text/css">
+    #clockdivActive {
+        padding-top: 5px;
+        display: table;
+        margin: 0 auto;
+        font-family: sans-serif;
+        color: #fff;
+        display: inline-block;
+        font-weight: 100;
+        text-align: center;
+        font-size: 18px;
+    }
+
+    .smalltext {
+        padding-top: 0px;
+        font-size: 9px;
+    }
+</style>
+<script type="text/javascript">
+    var et = getPlus2Hours();
+    updateClock()
+    var activeInterval = setInterval(updateClock, 1000);
+
+    function updateClock() {
+        var time = getTimeRemaining(et);
+        if (time.hours <= 0 && time.minutes <= 0 && time.seconds <= 0) {
+            clearInterval(activeInterval);
+            LogUserOut()
+        }
+    }
+
+    $("*").on('click keypress', function () {
+        clearInterval(activeInterval);
+        et = getPlus2Hours()
+        activeInterval = setInterval(updateClock, 1000)
+    });
+
+    function getTimeRemaining(endtime) {
+        var t = endtime - Date.parse(new Date());
+        var seconds = Math.floor((t / 1000) % 60);
+        var minutes = Math.floor((t / 1000 / 60) % 60);
+        var hours = Math.floor((t / (1000 * 60 * 60)) % 24);
+
+        document.querySelector('.hoursActive').innerHTML = ('0' + hours).slice(-2);
+        document.querySelector('.minutesActive').innerHTML = ('0' + minutes).slice(-2);
+        document.querySelector('.secondsActive').innerHTML = ('0' + seconds).slice(-2);
+        return {
+            'hours': hours,
+            'minutes': minutes,
+            'seconds': seconds
+        };
+    }
+
+    function LogUserOut() {
+        (() => window.location = '/Account/LogOff')();
+    }
+    function getPlus2Hours() {
+        var today = new Date();
+        return today.setHours(today.getHours() + 2);
+    }
+</script>
+                        
+<div class="veglat">
+    <a href="#"><i id="iconFullScreen" onclick="toggleFullScreen()" class="fa fa-expand" aria-hidden="true" title="Full Screen"></i></a>
+    <a href="/Home/PageMap"><i class="fa fa-sitemap" aria-hidden="true" title="Page Map"></i></a>
+    <a id="iconShkyqu" href="javascript:document.getElementById('logoutForm').submit()"><i title="Shkyçu" class="fa fa-power-off" aria-hidden="true"></i></a>
+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Body -->
+        <section id="main-content" class="">
+            <div class="pull-left mobile-pagetitle">
+                <h1></h1>
+            </div>
+            <section class="wrapper main-wrapper">
+                <div class="content-wrapper ng-scope">
+                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                        
+
+
+    <div class="row">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+            <div style="background-color:#FFF" class="alert ng-scope ng-isolate-scope alert-danger minimal alert-dismissible" id="MesageInfoID" role="alert" type="success minimal">
+                <h5 style="color:red;font-weight:bold">Mesazh informues</h5>
+                <span class="ng-binding ng-scope" style="font-size:14px">Keni nje njoftim te ri! Ju lutem hyni ne sistem per te pare njoftimin.</span>
+            </div>
+            <div class="card-news card-unread" id="1001" data-bind="0">
+                <div class="content-card">
+                    <div class="bg-card" id="LexuarDIV_1001"><span class="anim-bgCard">E pa-lexuar</span></div>
+                    <h1 class="news-title">Zgjedhja e lëndëve për semestrin e ardhshëm</h1>
+                    <div class="calendar-card"><i class="fa fa-calendar"></i> 03/10/2026</div>
+                    <div class="news-content" id="content_1001">Njoftojmë të gjithë studentët se nga data 05/10/2026 fillon procesi i zgjedhjes së lëndëve për semestrin e ri akademik. Ju lutemi hyni në sistem dhe zgjidhni lëndët tuaja në kohën e duhur.</div>
+                    <div class="button-card">
+                        <input type="hidden" id="PostID_1001" value="0">
+                        <a href="javascript:void(0)" onclick="Lexo(1001,42)" class="cart-btn">Më shumë</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<style>
+    .card-news {
+        position: relative;
+        width: 95%;
+        display: flex;
+        align-items: center;
+        padding: 20px 10px 20px 0px;
+        margin: 20px auto 10px auto;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .card-unread {
+        border: 2px solid rgba(100, 149, 237, .6);
+        box-shadow: 0px 8px 40px rgba(100, 149, 237,0.2);
+    }
+
+    .card-read {
+        border: 2px solid rgba(217, 217, 217, .6);
+        box-shadow: 0px 8px 40px rgba(217, 217, 217, .2);
+    }
+
+    .content-card {
+        animation-delay: 0.3s;
+        position: relative;
+        left: 20px;
+        width: 100%;
+        z-index: 3;
+    }
+
+        .content-card h1 {
+            font-size: 22px;
+            margin-top: 9px;
+            margin-bottom: 13px;
+        }
+
+    .calendar-card {
+        font-size: 13px;
+        margin-bottom: 8px;
+        margin-top: 10px;
+    }
+
+        .calendar-card i {
+            font-size: 16px;
+            margin-right: 5px;
+            color: #6495ED;
+        }
+
+    .info-card {
+        display: inline-block;
+        float: right;
+        margin-right: 15px;
+    }
+
+        .info-card span:nth-child(1) {
+            position: absolute;
+            font-size: 30px;
+            font-weight: 600;
+            width: 20px;
+            right: 15px;
+            top: -10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+            .info-card span:nth-child(1):hover {
+                transform: scale(1.1);
+            }
+
+        .info-card span:nth-child(2) {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+
+
+    .news-title {
+        color: #111;
+    }
+
+    .news-content {
+        width: 90%;
+        display: none;
+        font-size: 13px;
+        line-height: 1.4;
+        color: #333;
+        margin: 20px 20px;
+    }
+
+    .bg-card {
+        position: absolute;
+        top: -35px;
+        color: #fff;
+        background: #6495ED;
+        padding: 3px 10px;
+        border-radius: 50px;
+        font-size: 10px;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        box-shadow: 0px 6px 40px rgba(100, 149, 237, .3);
+    }
+
+    .button-card {
+        margin-top: 10px;
+    }
+
+        .button-card .cart-btn {
+            display: inline-block;
+            overflow: hidden;
+            position: relative;
+            font-size: 11px;
+            color: #333;
+            text-decoration: none;
+            padding: 3px 15px;
+            border: 1px solid #aaa;
+            font-weight: bold;
+            border-radius: 50px;
+            background: transparent;
+            text-transform: uppercase;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+        }
+
+            .button-card .cart-btn:after {
+                content: "";
+                position: absolute;
+                top: 0;
+                right: -10px;
+                width: 0%;
+                background: #111;
+                height: 100%;
+                transition: width 0.3s ease-in-out;
+                transform: skew(-25deg);
+                z-index: -1;
+                transform-origin: right;
+            }
+
+            .button-card .cart-btn:hover:after, .button-card .cart-btn:active:after {
+                width: 150%;
+                left: -10px;
+                transform-origin: left;
+            }
+
+            .button-card .cart-btn:hover, .button-card .cart-btn:active {
+                color: #fff;
+                z-index: 2;
+                transition: all 0.5s ease;
+            }
+
+    .cart-icon {
+        padding-right: 8px;
+    }
+
+    .anim-bgCard {
+        color: #6495ED;
+        overflow: hidden;
+        height: 30px;
+        -webkit-animation-name: bg-card-Hide;
+        -webkit-animation-duration: 1s;
+        -webkit-animation-iteration-count: 1;
+        -webkit-animation-timing-function: ease;
+        -webkit-animation-fill-mode: forwards;
+    }
+
+    @keyframes bg-card-Hide {
+        0% {
+            opacity: 1;
+            width: 145px;
+        }
+
+        99% {
+            opacity: 1;
+            width: 30px;
+        }
+
+        100% {
+            opacity: 0;
+        }
+    }
+
+    @-webkit-keyframes bg-card-Hide {
+        0% {
+            opacity: 1;
+            width: 145px;
+        }
+
+        99% {
+            opacity: 1;
+            width: 30px;
+        }
+
+        100% {
+            opacity: 0;
+        }
+    }
+
+    @media only screen and (max-width: 480px) {
+        .content-card h1 {
+            margin-top: 5px;
+            font-size: 18px;
+        }
+
+        .info-card span:nth-child(1) {
+            right: 4px;
+        }
+
+        .info-card span:nth-child(2) {
+            position: relative;
+            display: block;
+            text-align: center;
+            top: -7px;
+            right: 5px;
+        }
+
+        .calendar-card {
+            margin-top: 5px;
+        }
+
+        .bg-card {
+            position: absolute;
+            box-shadow: 0px 6px 40px rgba(100, 149, 237, .15);
+        }
+
+        .card-news {
+            width: 100%;
+        }
+
+        .content-card {
+            width: 95%;
+        }
+
+        .info-card {
+            float: none;
+        }
+    }
+</style>
+
+<script async="">
+
+    $(document).ready(function () {
+        $(".card-news").each(function (index) {
+            if ($(this).attr('data-bind') == 0) {
+                $(this).addClass('card-unread');
+            } else {
+                $(this).addClass('card-read');
+            }
+        });
+    })
+    function Fshij(LajmiId, UserId) {
+        $.ajax({
+            type: "Get",
+            url: '/Home/FshiLajmin',
+            data: {
+                LajmiId: LajmiId,
+                UserId: UserId
+            },
+            success: function (data) {
+                if (data.status == "ok") {
+                    $('#' + LajmiId).hide(400);
+                }
+            },
+            error: function (data) {
+                console.log(data);
+            }
+        });
+    }
+
+    function Lexo(LajmiId, UserId) {
+        if ($("#PostID_" + LajmiId).val() == "0") {
+            $(".loader-gif").remove();
+            $.ajax({
+                type: "Get",
+                url: '/Home/LexoLajmin',
+                data: {
+                    LajmiId: LajmiId,
+                    UserId: UserId
+                },
+                success: function (data) {
+                    $('#LexuarDIV_' + LajmiId).children().addClass('anim-bgCard');
+                    $('#content_' + LajmiId).css('display', 'block');
+                    $('#button_' + LajmiId).text('Më pak');
+                    $('#' + LajmiId).removeClass('card-unread').addClass('card-read');
+                    document.getElementById('PostID_' + LajmiId).value = "1";
+                },
+                error: function () {
+                }
+            });
+        } else {
+            if ($('#button_' + LajmiId).text() === 'Më pak') {
+                $('#content_' + LajmiId).css('display', 'none');
+                $('#button_' + LajmiId).text('Më shumë');
+            } else {
+                $('#content_' + LajmiId).css('display', 'block');
+                $('#button_' + LajmiId).text('Më pak');
+            }
+
+        }
+    }
+</script>
+
+                    </div>
+                </div>
+            </section>
+        </section>
+        <div class="pollSlider">
+            <a href="#" onclick="localStorage.setItem('UserStyle','style2'); location.reload();"><i class="fa fa-adjust" style="color:#3a579b" aria-hidden="true"></i></a>
+            <a href="#" onclick="localStorage.setItem('UserStyle','style1'); location.reload();"><i class="fa fa-adjust" style="color: #37474F" aria-hidden="true"></i></a>
+            <a href="#" onclick="localStorage.setItem('UserStyle','style3'); location.reload();"><i class="fa fa-adjust" style="color: #4F647A" aria-hidden="true"></i></a>
+        </div>
+        <div id="pollSlider-button">
+            <i class="fa fa-cogs" aria-hidden="true"></i>
+        </div>
+        <!-- Right Bar -->
+        <div class="page-chatapi hideit">
+    <h2 class="chatapi-head">
+        Gjuha
+        <a href="#" data-toggle="chatbar" class="toggle_chat">
+            <i class="material-icons">close</i>
+        </a>
+    </h2>
+    <div class="chat-wrapper hideit">
+        <div>
+            <ul class="group-list list-unstyled">
+                <li class="group-row">
+                    <div class="group-status available">
+                        <img src="/Images/albania.png">
+                    </div>
+                    <div class="group-info">
+                        <h4><a href="/Home/SetCulture?culture=sq-AL">Shqip</a></h4>
+                    </div>
+                </li>
+                <li class="group-row">
+                    <div class="group-status idle">
+                        <img src="/Images/united_kingdom.png">
+                    </div>
+                    <div class="group-info">
+                        <h4><a href="/Home/SetCulture?culture=en-US">English</a></h4>
+                    </div>
+                </li>
+                <li class="group-row">
+                    <div class="group-status busy">
+                        <img src="/Images/bosnia_and_herzegovina.png">
+                    </div>
+                    <div class="group-info">
+                        <h4><a href="/Home/SetCulture?culture=az">Bosanski</a></h4>
+                    </div>
+                </li>
+            </ul>
+            <div class="sidebar-graphs col-md-12 ng-scope" style="position:absolute;bottom:50px">              
+                        <h5 style="margin-bottom:5px;text-align:center">
+                            Qasja fundit:
+                        </h5>
+                        <h5 style="margin-bottom:8px;text-align:center" id="LastLogInTimeID"></h5>
+                        <h5 style="text-align:center">
+                            &nbsp;© 2026 - SMU Gjilan
+                        </h5>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .group-status img {
+        width: 40px;
+        height: 30px;
+        margin-top: -10px;
+    }
+</style>
+        <!-- JS FRAMEWORK - START -->
+        
+        <script src="/Scripts/app.js" async=""></script>
+        
+    <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;8a5d6261eb4341ea91eada61215b8506&quot;,&quot;r&quot;:1,&quot;spa&quot;:2}" crossorigin="anonymous"></script>
+
+
+<script src="/Scripts/bootstrap.min.js"></script>
+<script src="/Scripts/respond.min.js"></script>
+<script src="/Scripts/moment.min.js"></script>
+<script src="/Scripts/DataTables/dataTables.min.js"></script>
+<script src="/Scripts/DataTables/js.dataTables.responsive.min.js"></script>
+<script src="/Scripts/DataTables/responsive.bootstrap4.min.js"></script>
+<script src="/Scripts/DataTables/dataTables.bootstrap4.min.js"></script>
+<script src="/Scripts/bootstrap-datepicker.min.js"></script>
+<script src="/Scripts/bootstrap-datetimepicker.min.js"></script>
+<script src="/Scripts/select2.js"></script>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+<script src="/Scripts/jquery.unobtrusive-ajax.min.js"></script>
+<script>
+    toastr.options = {
+          "closeButton": true,
+          "debug": true,
+          "newestOnTop": false,
+          "progressBar": true,
+          "positionClass": "toast-top-right",
+          "preventDuplicates": true,
+          "onclick": null,
+          "showDuration": "30000",
+          "hideDuration": "100000",
+          "timeOut": "50000",
+          "extendedTimeOut": "300000",
+          "showEasing": "swing",
+          "hideEasing": "linear",
+          "showMethod": "fadeIn",
+          "hideMethod": "fadeOut"
+        }
+
+    $(document).on({
+        ajaxStart: function () { $(".loader-gif").fadeIn(); },
+        ajaxStop: function () { $(".loader-gif").fadeOut(); }
+    });
+
+    $(document).ready(function () {
+        $('#myTable').DataTable({
+            responsive: true,
+            "order": [],
+            autoFill: true,
+            language: {
+                "sEmptyTable": "Nuk ka t&#235; dh&#235;na",
+                "sInfo": "Duke treguar _START_ deri _END_ prej _TOTAL_ rreshtave.",
+                "sInfoEmpty": "Duke treguar 0 deri 0 prej 0 rreshtave.",
+                "sInfoFiltered": "(t&#235; filtruara nga gjith&#235;sej _MAX_  reshtave).",
+                "sInfoPostFix": "",
+                "sInfoThousands": ",",
+                "sLengthMenu": "Shiko _MENU_ rreshta",
+                "sLoadingRecords": "Duke u ngarkuar....",
+                "sProcessing": "Duke u perpunuar....",
+                "sSearch": "K&#235;rkoni.:",
+                "sZeroRecords": "Asnj&#235; e dh&#235;n&#235; nuk u gjet.",
+                "oPaginate": {
+                    "sFirst": "E para",
+                    "sLast": "E fundit.",
+                    "sNext": "Tjetra.",
+                    "sPrevious": "E Kaluara."
+                },
+                "oAria": {
+                    "sSortAscending": ": Aktivizo p&#235;r t&#235; sortuar kolumnin me vlera n&#235; ngritje.",
+                    "sSortDescending": ": Aktivizo p&#235;r t&#235; sortuar kolumnin me vlera n&#235; zbritje."
+                }
+            }
+        });
+    });
+
+    $(document).bind("contextmenu", function (e) {
+        e.preventDefault();
+    });
+
+    document.onkeydown = function (e) {
+        if (event.keyCode == 123) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'E'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'H'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'A'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'F'.charCodeAt(0)) {
+            return false;
+        }
+        if (e.ctrlKey && e.keyCode == 'E'.charCodeAt(0)) {
+            return false;
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('service-worker.js').then(function (registration) {
+                /*console.log('ServiceWorker registration successful with scope: ', registration.scope);*/
+            }, function (err) {
+                // registration failed :(
+                console.log('ServiceWorker registration failed: ', err);
+            }).catch(function (err) {
+                console.log(err)
+            });
+        });
+    } else {
+        console.log('service worker is not supported');
+    }
+</script></body></html>

@@ -3,6 +3,7 @@
 .env.local
 .env.production
 .env.*.local
+.env.test
 
 # ── Runtime state & logs ──────────────────────────────────────────────────────
 state.json
@@ -28,12 +29,16 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
-# ── website pages ─────────────────────────────────────────────────────────────────
+# ── Saved website HTML snapshots (local reference only) ──────────────────────
 smu.uni-gjilan.net.html
 njoftimet.html
+login.html
 
-# ── Local test/utility scripts ───────────────────────────────────────────────
+# ── Local test/utility scripts (not for production) ──────────────────────────
 test_ntfy.py
+run_test.py
+test_server.py
+make_fixtures.py
 
 # ── Visual Studio Code ───────────────────────────────────────────────────────
 .vscode/
